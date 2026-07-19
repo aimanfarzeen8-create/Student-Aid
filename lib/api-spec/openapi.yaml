@@ -3,13 +3,17 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: MedTerms API - Medical Terms Dictionary and Flashcard App
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: terms
+    description: Medical term operations
+  - name: stats
+    description: Statistics and summaries
 paths:
   /healthz:
     get:
@@ -24,6 +28,256 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /terms:
+    get:
+      operationId: listTerms
+      tags: [terms]
+      summary: List all medical terms
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search by term name or definition
+        - in: query
+          name: category
+          schema:
+            type: string
+          description: Filter by category
+        - in: query
+          name: difficulty
+          schema:
+            type: string
+            enum: [beginner, intermediate, advanced]
+          description: Filter by difficulty
+        - in: query
+          name: favoritesOnly
+          schema:
+            type: boolean
+          description: Return only favorited terms
+        - in: query
+          name: learnedOnly
+          schema:
+            type: boolean
+          description: Return only learned terms
+      responses:
+        "200":
+          description: List of medical terms
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Term"
+    post:
+      operationId: createTerm
+      tags: [terms]
+      summary: Create a new medical term
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TermInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Term"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /terms/quiz:
+    get:
+      operationId: getQuizTerms
+      tags: [terms]
+      summary: Get random terms for a quiz session
+      parameters:
+        - in: query
+          name: count
+          schema:
+            type: integer
+            default: 10
+          description: Number of quiz terms to return
+        - in: query
+          name: category
+          schema:
+            type: string
+          description: Filter quiz terms by category
+        - in: query
+          name: difficulty
+          schema:
+            type: string
+            enum: [beginner, intermediate, advanced]
+          description: Filter quiz terms by difficulty
+      responses:
+        "200":
+          description: Quiz questions with answer choices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuizQuestion"
+
+  /terms/{id}:
+    get:
+      operationId: getTerm
+      tags: [terms]
+      summary: Get a single medical term
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Medical term
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Term"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateTerm
+      tags: [terms]
+      summary: Update a medical term
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TermUpdate"
+      responses:
+        "200":
+          description: Updated term
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Term"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteTerm
+      tags: [terms]
+      summary: Delete a medical term
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /terms/{id}/favorite:
+    post:
+      operationId: toggleFavorite
+      tags: [terms]
+      summary: Toggle favorite status of a term
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated term
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Term"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /terms/{id}/learned:
+    post:
+      operationId: toggleLearned
+      tags: [terms]
+      summary: Toggle learned status of a term
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated term
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Term"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /stats:
+    get:
+      operationId: getStats
+      tags: [stats]
+      summary: Get summary statistics
+      responses:
+        "200":
+          description: Statistics summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Stats"
+
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [terms]
+      summary: List all available categories
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +288,157 @@ components:
       required:
         - status
 
+    Term:
+      type: object
+      required:
+        - id
+        - term
+        - definition
+        - category
+        - difficulty
+        - isFavorite
+        - isLearned
+        - createdAt
+      properties:
+        id:
+          type: integer
+        term:
+          type: string
+        pronunciation:
+          type: ["string", "null"]
+        definition:
+          type: string
+        example:
+          type: ["string", "null"]
+        category:
+          type: string
+        difficulty:
+          type: string
+          enum: [beginner, intermediate, advanced]
+        isFavorite:
+          type: boolean
+        isLearned:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    TermInput:
+      type: object
+      required:
+        - term
+        - definition
+        - category
+        - difficulty
+      properties:
+        term:
+          type: string
+          minLength: 1
+        pronunciation:
+          type: string
+        definition:
+          type: string
+          minLength: 1
+        example:
+          type: string
+        category:
+          type: string
+          minLength: 1
+        difficulty:
+          type: string
+          enum: [beginner, intermediate, advanced]
+
+    TermUpdate:
+      type: object
+      properties:
+        term:
+          type: string
+          minLength: 1
+        pronunciation:
+          type: string
+        definition:
+          type: string
+          minLength: 1
+        example:
+          type: string
+        category:
+          type: string
+        difficulty:
+          type: string
+          enum: [beginner, intermediate, advanced]
+
+    QuizQuestion:
+      type: object
+      required:
+        - termId
+        - term
+        - correctAnswer
+        - choices
+      properties:
+        termId:
+          type: integer
+        term:
+          type: string
+        correctAnswer:
+          type: string
+        choices:
+          type: array
+          items:
+            type: string
+
+    Stats:
+      type: object
+      required:
+        - total
+        - learned
+        - favorites
+        - byCategory
+        - byDifficulty
+      properties:
+        total:
+          type: integer
+        learned:
+          type: integer
+        favorites:
+          type: integer
+        byCategory:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryCount"
+        byDifficulty:
+          type: array
+          items:
+            $ref: "#/components/schemas/DifficultyCount"
+
+    CategoryCount:
+      type: object
+      required:
+        - category
+        - count
+        - learned
+      properties:
+        category:
+          type: string
+        count:
+          type: integer
+        learned:
+          type: integer
+
+    DifficultyCount:
+      type: object
+      required:
+        - difficulty
+        - count
+      properties:
+        difficulty:
+          type: string
+        count:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
