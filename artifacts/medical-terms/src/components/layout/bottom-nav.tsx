@@ -1,15 +1,15 @@
 import React from 'react';
 import { useLocation } from 'wouter';
-import { Home, Search, Layers, Brain, User } from 'lucide-react';
+import { Home, CalendarDays, Timer, Search, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
 const NAV_ITEMS = [
   { id: 'home', label: 'Home', icon: Home, path: '/' },
+  { id: 'planner', label: 'Planner', icon: CalendarDays, path: '/planner' },
+  { id: 'timer', label: 'Timer', icon: Timer, path: '/timer' },
   { id: 'browse', label: 'Browse', icon: Search, path: '/browse' },
-  { id: 'flashcards', label: 'Flashcards', icon: Layers, path: '/flashcards' },
   { id: 'quiz', label: 'Quiz', icon: Brain, path: '/quiz' },
-  { id: 'profile', label: 'Profile', icon: User, path: '/profile' },
 ];
 
 export function BottomNav() {

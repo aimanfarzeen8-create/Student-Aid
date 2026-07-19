@@ -7,10 +7,10 @@ import { AnimatePresence } from 'framer-motion';
 
 import { MobileShell } from '@/components/layout/mobile-shell';
 import Home from '@/pages/home';
+import Planner from '@/pages/planner';
+import Timer from '@/pages/timer';
 import Browse from '@/pages/browse';
-import Flashcards from '@/pages/flashcards';
 import Quiz from '@/pages/quiz';
-import Profile from '@/pages/profile';
 import NotFound from '@/pages/not-found';
 
 const queryClient = new QueryClient({
@@ -28,10 +28,10 @@ function Router() {
       <AnimatePresence mode="wait">
         <Switch>
           <Route path="/" component={Home} />
+          <Route path="/planner" component={Planner} />
+          <Route path="/timer" component={Timer} />
           <Route path="/browse" component={Browse} />
-          <Route path="/flashcards" component={Flashcards} />
           <Route path="/quiz" component={Quiz} />
-          <Route path="/profile" component={Profile} />
           <Route component={NotFound} />
         </Switch>
       </AnimatePresence>
