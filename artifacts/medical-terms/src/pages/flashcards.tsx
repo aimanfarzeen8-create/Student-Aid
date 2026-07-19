@@ -1,185 +1,107 @@
-import { useState, useEffect } from "react";
-import { useListTerms, Term } from "@workspace/api-client-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { ChevronLeft, ChevronRight, RotateCcw, Frown, Sparkles } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { useLocation } from "wouter";
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { SlidersHorizontal, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { TopHeader } from '@/components/layout/mobile-shell';
+import { cn } from '@/lib/utils';
 
 export default function Flashcards() {
-  const [difficulty, setDifficulty] = useState<string>("all");
-  const [unlearnedOnly, setUnlearnedOnly] = useState(false);
-  
-  const { data: allTerms, isLoading } = useListTerms();
-  
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [filteredTerms, setFilteredTerms] = useState<Term[]>([]);
-
-  // Filter terms based on selection
-  useEffect(() => {
-    if (allTerms) {
-      const filtered = allTerms.filter(t => {
-        const matchDiff = difficulty === "all" || t.difficulty === difficulty;
-        const matchLearn = unlearnedOnly ? !t.isLearned : true;
-        return matchDiff && matchLearn;
-      });
-      // Shuffle array for better study experience
-      const shuffled = [...filtered].sort(() => Math.random() - 0.5);
-      setFilteredTerms(shuffled);
-      setCurrentIndex(0);
-      setIsFlipped(false);
-    }
-  }, [allTerms, difficulty, unlearnedOnly]);
-
-  const handleNext = () => {
-    if (currentIndex < filteredTerms.length - 1) {
-      setIsFlipped(false);
-      setTimeout(() => {
-        setCurrentIndex(c => c + 1);
-      }, 150); // wait for flip back animation
-    }
-  };
-
-  const handlePrev = () => {
-    if (currentIndex > 0) {
-      setIsFlipped(false);
-      setTimeout(() => {
-        setCurrentIndex(c => c - 1);
-      }, 150);
-    }
-  };
-
-  const currentTerm = filteredTerms[currentIndex];
 
   return (
-    <div className="p-6 md:p-10 max-w-4xl mx-auto flex flex-col min-h-[calc(100vh-3.5rem)] animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-serif font-bold text-foreground">Flashcards</h1>
-          <p className="text-muted-foreground mt-1">Drill your medical terminology.</p>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-4 bg-secondary/20 p-2 rounded-xl border border-border/50">
-          <Select value={difficulty} onValueChange={setDifficulty}>
-            <SelectTrigger className="w-[140px] h-9 bg-background">
-              <SelectValue placeholder="Difficulty" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Levels</SelectItem>
-              <SelectItem value="beginner">Beginner</SelectItem>
-              <SelectItem value="intermediate">Intermediate</SelectItem>
-              <SelectItem value="advanced">Advanced</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <div className="flex items-center space-x-2 bg-background px-3 py-1.5 rounded-md border border-input">
-            <Switch 
-              id="unlearned-mode" 
-              checked={unlearnedOnly}
-              onCheckedChange={setUnlearnedOnly}
-            />
-            <Label htmlFor="unlearned-mode" className="text-xs font-medium cursor-pointer">Unlearned Only</Label>
+    <motion.div 
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="flex flex-col h-full bg-background"
+    >
+      <TopHeader 
+        title={
+          <div className="flex flex-col items-start">
+            <span className="text-lg font-bold">Study Mode</span>
+            <span className="text-xs font-semibold text-muted-foreground">Card 1 of 30</span>
           </div>
-        </div>
+        }
+        rightAction={
+          <button className="w-10 h-10 flex items-center justify-center rounded-full text-muted-foreground hover:bg-secondary transition-colors">
+            <SlidersHorizontal className="w-5 h-5" />
+          </button>
+        } 
+      />
+
+      {/* Progress bar */}
+      <div className="w-full h-1 bg-secondary">
+        <div className="h-full bg-primary w-[3.33%] rounded-r-full transition-all duration-300"></div>
       </div>
 
-      {isLoading ? (
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <Skeleton className="w-full max-w-2xl h-[400px] rounded-3xl" />
-        </div>
-      ) : filteredTerms.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4">
-          <div className="h-20 w-20 bg-secondary/50 rounded-full flex items-center justify-center mb-2">
-            <Sparkles className="h-10 w-10 text-primary/50" />
+      <div className="flex-1 flex flex-col px-6 pt-8 pb-28">
+        
+        {/* Card Container with 3D perspective */}
+        <div 
+          className="flex-1 perspective-1000 relative cursor-pointer"
+          onClick={() => setIsFlipped(!isFlipped)}
+        >
+          <div className={cn(
+            "w-full h-full relative transform-style-3d transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] rounded-3xl",
+            isFlipped ? "rotate-y-180" : "rotate-y-0"
+          )}>
+            
+            {/* Front of Card */}
+            <div className="absolute inset-0 backface-hidden bg-gradient-to-br from-primary to-[#115e59] rounded-3xl p-8 flex flex-col items-center justify-center shadow-lg border border-primary/20">
+              <span className="absolute top-6 left-6 text-primary-foreground/60 text-xs font-bold uppercase tracking-widest">
+                Cardiology
+              </span>
+              <h2 className="text-4xl sm:text-5xl font-bold text-white text-center leading-tight tracking-tight">
+                Tachycardia
+              </h2>
+            </div>
+
+            {/* Back of Card */}
+            <div className="absolute inset-0 backface-hidden rotate-y-180 bg-card rounded-3xl p-8 flex flex-col shadow-lg border border-border">
+              <span className="text-muted-foreground text-xs font-bold uppercase tracking-widest mb-6">
+                Definition
+              </span>
+              
+              <div className="flex-1 flex flex-col justify-center">
+                <h3 className="text-2xl font-bold text-primary mb-4">Tachycardia</h3>
+                <p className="text-foreground text-lg leading-relaxed font-medium">
+                  A condition that makes your heart beat more than 100 times per minute.
+                </p>
+                
+                <div className="mt-8 p-4 bg-secondary rounded-xl border border-border/50">
+                  <span className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Example</span>
+                  <p className="text-sm italic text-foreground/80">
+                    "The patient presented with sinus tachycardia, likely due to acute anxiety."
+                  </p>
+                </div>
+              </div>
+            </div>
+
           </div>
-          <h2 className="text-2xl font-serif font-semibold text-foreground">You're all caught up!</h2>
-          <p className="text-muted-foreground max-w-md">
-            No terms match your current filters. Try changing difficulty or adding more terms.
+        </div>
+
+        <div className="text-center mt-6 h-6">
+          <p className="text-sm font-semibold text-muted-foreground animate-pulse">
+            Tap card to flip
           </p>
         </div>
-      ) : (
-        <div className="flex-1 flex flex-col items-center justify-center max-w-3xl w-full mx-auto pb-10">
-          <div className="w-full flex justify-between items-center mb-6 text-sm font-medium text-muted-foreground px-4">
-            <span>Card {currentIndex + 1} of {filteredTerms.length}</span>
-            <Badge variant="outline" className="uppercase tracking-widest text-[10px]">
-              {currentTerm.category}
-            </Badge>
-          </div>
 
-          <div 
-            className="w-full h-[400px] md:h-[450px] perspective-1000 cursor-pointer"
-            onClick={() => setIsFlipped(!isFlipped)}
-          >
-            <div 
-              className={`relative w-full h-full transition-transform duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}
-            >
-              {/* Front of card (Term) */}
-              <Card className="absolute w-full h-full backface-hidden shadow-lg border-2 border-border flex flex-col items-center justify-center p-8 bg-card hover:border-primary/30 transition-colors">
-                <CardContent className="text-center space-y-4 p-0">
-                  <h2 className="text-4xl md:text-6xl font-serif font-bold text-foreground">
-                    {currentTerm.term}
-                  </h2>
-                  {currentTerm.pronunciation && (
-                    <p className="text-xl font-mono text-muted-foreground">
-                      /{currentTerm.pronunciation}/
-                    </p>
-                  )}
-                  <div className="absolute bottom-6 left-0 w-full text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
-                    <RotateCcw className="h-4 w-4" /> Tap to flip
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Back of card (Definition) */}
-              <Card className="absolute w-full h-full backface-hidden rotate-y-180 shadow-lg border-2 border-primary/20 flex flex-col items-center justify-center p-8 bg-primary/5">
-                <CardContent className="text-center w-full max-w-xl mx-auto space-y-8 p-0">
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-bold uppercase tracking-widest text-primary/70">Definition</h3>
-                    <p className="text-xl md:text-2xl font-medium text-foreground leading-relaxed">
-                      {currentTerm.definition}
-                    </p>
-                  </div>
-                  
-                  {currentTerm.example && (
-                    <div className="space-y-2 pt-6 border-t border-primary/10">
-                      <h3 className="text-sm font-bold uppercase tracking-widest text-primary/70">Clinical Example</h3>
-                      <p className="text-lg text-foreground/80 italic">
-                        "{currentTerm.example}"
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-center gap-8 mt-10 w-full">
-            <Button 
-              variant="outline" 
-              size="lg"
-              className="w-32 rounded-full h-14"
-              disabled={currentIndex === 0}
-              onClick={handlePrev}
-            >
-              <ChevronLeft className="mr-2 h-5 w-5" /> Prev
-            </Button>
-            
-            <Button 
-              size="lg"
-              className="w-32 rounded-full h-14 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md"
-              onClick={handleNext}
-              disabled={currentIndex === filteredTerms.length - 1}
-            >
-              Next <ChevronRight className="ml-2 h-5 w-5" />
-            </Button>
-          </div>
+        {/* Bottom Controls */}
+        <div className="flex items-center justify-between mt-8 gap-4">
+          <button className="w-14 h-14 flex items-center justify-center rounded-2xl bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors shrink-0">
+            <ChevronLeft className="w-7 h-7" />
+          </button>
+          
+          <button className="flex-1 h-14 bg-foreground text-background font-bold text-lg rounded-2xl flex items-center justify-center gap-2 hover:bg-foreground/90 transition-colors active:scale-95">
+            <Check className="w-5 h-5" />
+            Mark Learned
+          </button>
+          
+          <button className="w-14 h-14 flex items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-md hover:bg-primary/90 transition-colors shrink-0">
+            <ChevronRight className="w-7 h-7" />
+          </button>
         </div>
-      )}
-    </div>
+
+      </div>
+    </motion.div>
   );
 }

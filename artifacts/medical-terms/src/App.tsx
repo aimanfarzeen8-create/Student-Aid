@@ -2,16 +2,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import NotFound from '@/pages/not-found';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
+import { AnimatePresence } from 'framer-motion';
 
-import { AppLayout } from '@/components/layout/app-layout';
-import Dashboard from '@/pages/dashboard';
-import Terms from '@/pages/terms';
-import TermDetail from '@/pages/term-detail';
+import { MobileShell } from '@/components/layout/mobile-shell';
+import Home from '@/pages/home';
+import Browse from '@/pages/browse';
 import Flashcards from '@/pages/flashcards';
 import Quiz from '@/pages/quiz';
-import AddTerm from '@/pages/add-term';
+import Profile from '@/pages/profile';
+import NotFound from '@/pages/not-found';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,17 +24,18 @@ const queryClient = new QueryClient({
 
 function Router() {
   return (
-    <AppLayout>
-      <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/terms" component={Terms} />
-        <Route path="/terms/:id" component={TermDetail} />
-        <Route path="/flashcards" component={Flashcards} />
-        <Route path="/quiz" component={Quiz} />
-        <Route path="/add" component={AddTerm} />
-        <Route component={NotFound} />
-      </Switch>
-    </AppLayout>
+    <MobileShell>
+      <AnimatePresence mode="wait">
+        <Switch>
+          <Route path="/" component={Home} />
+          <Route path="/browse" component={Browse} />
+          <Route path="/flashcards" component={Flashcards} />
+          <Route path="/quiz" component={Quiz} />
+          <Route path="/profile" component={Profile} />
+          <Route component={NotFound} />
+        </Switch>
+      </AnimatePresence>
+    </MobileShell>
   );
 }
 
