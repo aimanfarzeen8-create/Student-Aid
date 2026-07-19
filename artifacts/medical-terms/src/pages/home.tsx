@@ -4,9 +4,11 @@ import { motion } from 'framer-motion';
 import { Bell, CalendarDays, Timer, Search, Brain, Clock, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLocation } from 'wouter';
+import { useTodayTaskCount } from '@/hooks/use-tasks';
 
 export default function Home() {
   const [, setLocation] = useLocation();
+  const { data: todayCount } = useTodayTaskCount();
 
   return (
     <motion.div 
@@ -82,7 +84,13 @@ export default function Home() {
               <h3 className="text-white font-bold text-lg leading-tight">Planner</h3>
               <p className="text-white/80 text-xs mt-1 font-medium">Organize your study schedule</p>
               <div className="mt-3 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full inline-flex self-start">
-                <span className="text-white text-[10px] font-bold">3 tasks today</span>
+                <span className="text-white text-[10px] font-bold">
+                  {todayCount == null
+                    ? 'Loading…'
+                    : todayCount.active === 0
+                      ? todayCount.total === 0 ? 'No tasks today' : 'All done! 🎉'
+                      : `${todayCount.active} task${todayCount.active !== 1 ? 's' : ''} left`}
+                </span>
               </div>
             </div>
           </button>
