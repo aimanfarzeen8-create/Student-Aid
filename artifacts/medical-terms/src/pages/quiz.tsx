@@ -518,8 +518,6 @@ export default function Quiz() {
   const [finalScore, setFinalScore] = useState(0);
   const qc = useQueryClient();
 
-  interface SetupConfig { count: number; difficulty: string; aiTopic: string; mode: 'standard' | 'ai'; }
-
   const handleStart = (cfg: SetupConfig) => {
     qc.removeQueries({ queryKey: ['quiz'] });
     setConfig(cfg);

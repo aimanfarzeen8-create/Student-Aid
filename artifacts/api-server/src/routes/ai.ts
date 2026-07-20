@@ -180,6 +180,63 @@ router.post("/ai/conversations/:id/messages", async (req, res) => {
 // AI COMPANION ENDPOINTS
 // ─────────────────────────────────────────────────────────────────────────────
 
+// POST /api/ai/explain-term — deep-dive explanation for a Browse term (SSE streaming)
+router.post("/ai/explain-term", async (req, res) => {
+  const { term, definition, category, pronunciation, example } = req.body ?? {};
+  if (!term || !definition) {
+    res.status(400).json({ error: "term and definition are required" });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  try {
+    const genai = getGenAI();
+
+    const prompt = `You are a medical education assistant helping a student deeply understand a medical term.
+
+Term: **${term}**${pronunciation ? `\nPronunciation: ${pronunciation}` : ""}
+Category: ${category}
+Definition: "${definition}"${example ? `\nClinical example: "${example}"` : ""}
+
+Provide a comprehensive but concise educational breakdown with these sections:
+
+## 🔬 Deep Dive
+Explain the term thoroughly — its meaning, origin (etymology if interesting), and key characteristics.
+
+## 🏥 Clinical Significance
+Why does this matter in clinical practice? What scenarios does a doctor encounter this?
+
+## 🔗 Related Concepts
+List 3–4 closely related terms or conditions the student should know alongside this one.
+
+## 💡 Memory Hook
+Give one memorable mnemonic, analogy, or visual cue to make this stick.
+
+Keep each section tight and scannable. Use **bold** for key terms, bullet points where helpful.`;
+
+    const stream = await genai.models.generateContentStream({
+      model: "gemini-2.5-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      config: { maxOutputTokens: 8192 },
+    });
+
+    for await (const chunk of stream) {
+      const text = chunk.text;
+      if (text) res.write(`data: ${JSON.stringify({ content: text })}\n\n`);
+    }
+
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    res.end();
+  } catch (err: any) {
+    res.write(`data: ${JSON.stringify({ error: err?.message ?? "Explain failed" })}\n\n`);
+    res.end();
+  }
+});
+
 // POST /api/ai/sort-task — analyse a task title+notes and suggest category/priority/notes
 router.post("/ai/sort-task", async (req, res) => {
   const title = req.body?.title;

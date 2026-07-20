@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { TopHeader } from '@/components/layout/mobile-shell';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Bookmark, CheckCircle2, BookOpen, Loader2, AlertCircle } from 'lucide-react';
+import { Search, Bookmark, CheckCircle2, BookOpen, Loader2, AlertCircle, Sparkles, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTerms, useToggleFavorite, useToggleLearned } from '@/hooks/use-terms';
 import type { Term } from '@/hooks/use-terms';
@@ -14,10 +14,152 @@ const DIFF_COLORS: Record<string, string> = {
   advanced: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
 };
 
+// ─── Inline markdown renderer ─────────────────────────────────────────────────
+function renderMd(text: string): React.ReactNode[] {
+  const lines = text.split('\n');
+  const nodes: React.ReactNode[] = [];
+  let i = 0, k = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line.startsWith('## ')) { nodes.push(<h2 key={k++} className="font-bold text-sm mt-3 mb-1 text-foreground">{inlineMd(line.slice(3))}</h2>); i++; continue; }
+    if (line.startsWith('### ')) { nodes.push(<h3 key={k++} className="font-semibold text-sm mt-2 mb-0.5 text-foreground">{inlineMd(line.slice(4))}</h3>); i++; continue; }
+    if (/^[-*]\s/.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && /^[-*]\s/.test(lines[i])) { items.push(lines[i].replace(/^[-*]\s/, '')); i++; }
+      nodes.push(<ul key={k++} className="list-disc list-inside space-y-0.5 my-1 text-sm text-foreground">{items.map((it, idx) => <li key={idx}>{inlineMd(it)}</li>)}</ul>);
+      continue;
+    }
+    if (line.trim() === '') { nodes.push(<div key={k++} className="h-1.5" />); i++; continue; }
+    nodes.push(<p key={k++} className="text-sm leading-relaxed text-foreground">{inlineMd(line)}</p>);
+    i++;
+  }
+  return nodes;
+}
+function inlineMd(text: string): React.ReactNode {
+  const parts: React.ReactNode[] = [];
+  const re = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
+  let last = 0, m: RegExpExecArray | null, k = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(<span key={k++}>{text.slice(last, m.index)}</span>);
+    const t = m[0];
+    if (t.startsWith('**')) parts.push(<strong key={k++} className="font-bold">{t.slice(2, -2)}</strong>);
+    else if (t.startsWith('*')) parts.push(<em key={k++} className="italic">{t.slice(1, -1)}</em>);
+    else parts.push(<code key={k++} className="bg-muted px-1 rounded text-[11px] font-mono">{t.slice(1, -1)}</code>);
+    last = m.index + t.length;
+  }
+  if (last < text.length) parts.push(<span key={k++}>{text.slice(last)}</span>);
+  return parts.length ? parts : text;
+}
+
+// ─── AI Deep Dive Panel ───────────────────────────────────────────────────────
+function AiDeepDive({ term, onClose }: { term: Term; onClose: () => void }) {
+  const [content, setContent] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const abortRef = useRef<AbortController | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    abortRef.current = new AbortController();
+    setContent(''); setLoading(true); setError('');
+
+    (async () => {
+      try {
+        const r = await fetch('/api/ai/explain-term', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            term: term.term,
+            definition: term.definition,
+            category: term.category,
+            pronunciation: term.pronunciation,
+            example: term.example,
+          }),
+          signal: abortRef.current!.signal,
+        });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const reader = r.body!.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          for (const line of decoder.decode(value, { stream: true }).split('\n')) {
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const evt = JSON.parse(line.slice(6));
+              if (evt.error) throw new Error(evt.error);
+              if (evt.done) { setLoading(false); break; }
+              if (evt.content) { accumulated += evt.content; setContent(accumulated); setLoading(false); }
+            } catch (e: any) { if (e.message !== 'Unexpected end of JSON input') throw e; }
+          }
+        }
+      } catch (err: any) {
+        if (err.name !== 'AbortError') { setError(err.message ?? 'Failed.'); setLoading(false); }
+      }
+    })();
+
+    return () => abortRef.current?.abort();
+  }, [term.id]);
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [content]);
+
+  return (
+    <motion.div
+      initial={{ y: '100%' }}
+      animate={{ y: 0 }}
+      exit={{ y: '100%' }}
+      transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+      className="absolute inset-0 z-10 bg-background flex flex-col"
+    >
+      {/* Header */}
+      <div className="shrink-0 flex items-center gap-3 px-5 h-16 border-b border-border">
+        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+          <Sparkles className="w-4 h-4 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold truncate">AI Deep Dive</p>
+          <p className="text-[10px] text-muted-foreground truncate">{term.term}</p>
+        </div>
+        <button onClick={onClose} className="w-8 h-8 rounded-xl bg-secondary flex items-center justify-center shrink-0">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-5 py-5 pb-8">
+        {loading && !content && (
+          <div className="flex items-center gap-3 py-6">
+            <div className="flex gap-1">
+              {[0,1,2].map(i => (
+                <motion.span key={i} className="w-2 h-2 rounded-full bg-primary"
+                  animate={{ y: [0, -6, 0] }} transition={{ duration: 0.7, repeat: Infinity, delay: i * 0.15 }} />
+              ))}
+            </div>
+            <p className="text-sm text-muted-foreground font-medium">Generating deep dive…</p>
+          </div>
+        )}
+        {error && (
+          <div className="flex items-center gap-2 text-destructive text-sm py-3">
+            <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+          </div>
+        )}
+        {content && (
+          <div className="space-y-0.5">
+            {renderMd(content)}
+            {loading && <span className="inline-block w-1.5 h-4 bg-primary rounded-sm animate-pulse ml-0.5" />}
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── Term Detail Sheet ────────────────────────────────────────────────────────
 function TermSheet({ term, onClose }: { term: Term; onClose: () => void }) {
   const favorite = useToggleFavorite();
   const learned = useToggleLearned();
+  const [showAi, setShowAi] = useState(false);
 
   return (
     <motion.div
@@ -47,7 +189,7 @@ function TermSheet({ term, onClose }: { term: Term; onClose: () => void }) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 py-6 space-y-6">
+      <div className="flex-1 overflow-y-auto px-5 py-6 space-y-5 relative">
         {/* Header */}
         <div>
           <div className="flex flex-wrap gap-2 mb-3">
@@ -77,7 +219,21 @@ function TermSheet({ term, onClose }: { term: Term; onClose: () => void }) {
             <p className="text-sm leading-relaxed text-foreground">{term.example}</p>
           </div>
         )}
+
+        {/* AI Deep Dive button */}
+        <button
+          onClick={() => setShowAi(true)}
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-primary/25 bg-primary/5 hover:bg-primary/10 transition-colors"
+        >
+          <Sparkles className="w-4 h-4 text-primary" />
+          <span className="text-sm font-bold text-primary">AI Deep Dive</span>
+        </button>
       </div>
+
+      {/* AI panel layered on top */}
+      <AnimatePresence>
+        {showAi && <AiDeepDive term={term} onClose={() => setShowAi(false)} />}
+      </AnimatePresence>
     </motion.div>
   );
 }
