@@ -1,11 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { BottomNav } from './bottom-nav';
+import { AIChatButton, ChatPanel } from '@/components/ai/ai-chat';
 
 interface MobileShellProps {
   children: React.ReactNode;
 }
 
 export function MobileShell({ children }: MobileShellProps) {
+  const [chatOpen, setChatOpen] = useState(false);
+
   return (
     <div className="min-h-[100dvh] flex justify-center bg-[#e2e8f0] dark:bg-black w-full">
       <div className="w-full max-w-[430px] bg-background relative shadow-2xl flex flex-col h-[100dvh] overflow-hidden border-x border-border/50">
@@ -13,6 +17,14 @@ export function MobileShell({ children }: MobileShellProps) {
           {children}
         </div>
         <BottomNav />
+
+        {/* AI floating button */}
+        {!chatOpen && <AIChatButton onClick={() => setChatOpen(true)} />}
+
+        {/* AI chat panel */}
+        <AnimatePresence>
+          {chatOpen && <ChatPanel onClose={() => setChatOpen(false)} />}
+        </AnimatePresence>
       </div>
     </div>
   );
