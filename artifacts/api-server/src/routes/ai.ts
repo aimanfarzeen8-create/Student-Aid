@@ -176,4 +176,165 @@ router.post("/ai/conversations/:id/messages", async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// AI COMPANION ENDPOINTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// POST /api/ai/sort-task — analyse a task title+notes and suggest category/priority/notes
+router.post("/ai/sort-task", async (req, res) => {
+  const title = req.body?.title;
+  const notes = req.body?.notes ?? "";
+  if (!title || typeof title !== "string" || !title.trim()) {
+    res.status(400).json({ error: "title is required" });
+    return;
+  }
+
+  try {
+    const genai = getGenAI();
+    const prompt = `You are a medical study assistant. Analyse this study task and suggest the best categorisation.
+
+Task title: "${title.trim()}"
+Notes: "${notes.trim()}"
+
+Respond ONLY with valid JSON in this exact format (no markdown, no code fences):
+{
+  "category": "<one of: Study | Reading | Assessment | Review | Practice | Other>",
+  "priority": "<one of: high | medium | low>",
+  "notes": "<optional improved/expanded notes — max 120 chars, or empty string>",
+  "reasoning": "<one sentence explaining your choices>"
+}
+
+Category guide:
+- Study = active learning / memorising terms
+- Reading = textbooks / research articles
+- Assessment = exams, tests, self-assessment
+- Review = revisiting previously studied material
+- Practice = MCQs, clinical cases, procedures
+- Other = anything else
+
+Priority guide:
+- high = exam prep, deadlines < 3 days, urgent
+- medium = regular study tasks
+- low = optional reading, long-term goals`;
+
+    const response = await genai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      config: { responseMimeType: "application/json", maxOutputTokens: 512 },
+    });
+
+    const text = (response.text ?? "{}").trim();
+    const result = JSON.parse(text);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message ?? "AI sort failed" });
+  }
+});
+
+// POST /api/ai/explain-answer — SSE streaming explanation for a quiz answer
+router.post("/ai/explain-answer", async (req, res) => {
+  const { term, correctAnswer, selectedAnswer, wasCorrect } = req.body ?? {};
+  if (!term || !correctAnswer) {
+    res.status(400).json({ error: "term and correctAnswer are required" });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  try {
+    const genai = getGenAI();
+
+    const wrongAnswerLine = !wasCorrect && selectedAnswer
+      ? `\nThe student incorrectly selected: "${selectedAnswer}"`
+      : "";
+
+    const prompt = `You are a medical education assistant helping a student understand a quiz answer.
+
+Medical term: **${term}**
+Correct definition: "${correctAnswer}"${wrongAnswerLine}
+
+Write a concise educational explanation (3 short paragraphs) using this structure:
+1. **Definition & clinical significance** — explain the term clearly with one key clinical fact
+2. **Why this answer is correct** — highlight what makes the correct answer right; if the student was wrong, gently explain the distinction
+3. **Memory tip** — provide a mnemonic, analogy, or memorable hook
+
+Use markdown: **bold** key terms, bullet points where helpful. Keep it focused and easy to remember.`;
+
+    const stream = await genai.models.generateContentStream({
+      model: "gemini-2.5-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      config: { maxOutputTokens: 8192 },
+    });
+
+    for await (const chunk of stream) {
+      const text = chunk.text;
+      if (text) res.write(`data: ${JSON.stringify({ content: text })}\n\n`);
+    }
+
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    res.end();
+  } catch (err: any) {
+    res.write(`data: ${JSON.stringify({ error: err?.message ?? "Explain failed" })}\n\n`);
+    res.end();
+  }
+});
+
+// POST /api/ai/generate-quiz — generate quiz questions for a given medical topic
+router.post("/ai/generate-quiz", async (req, res) => {
+  const topic = req.body?.topic;
+  const count = Math.min(Math.max(Number(req.body?.count ?? 10), 3), 20);
+
+  if (!topic || typeof topic !== "string" || !topic.trim()) {
+    res.status(400).json({ error: "topic is required" });
+    return;
+  }
+
+  try {
+    const genai = getGenAI();
+
+    const prompt = `Generate exactly ${count} multiple-choice quiz questions about "${topic.trim()}" for medical students.
+
+Each question presents a medical term and asks the student to identify its correct definition.
+
+Requirements:
+- Each question must have exactly 4 choices (1 correct + 3 plausible distractors)
+- Distractors should be related to the topic but clearly wrong
+- Shuffle choices so the correct answer is not always first
+- Cover a variety of clinically important terms within the topic
+- Definitions should be concise (1-2 sentences)
+
+Respond ONLY with a valid JSON array (no markdown, no code fences):
+[
+  {
+    "term": "Medical term name",
+    "correctAnswer": "The accurate definition",
+    "choices": ["The accurate definition", "Wrong option 1", "Wrong option 2", "Wrong option 3"]
+  }
+]`;
+
+    const response = await genai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      config: { responseMimeType: "application/json", maxOutputTokens: 8192 },
+    });
+
+    const text = (response.text ?? "[]").trim();
+    const questions = JSON.parse(text);
+
+    const formatted = (questions as any[]).map((q: any, i: number) => ({
+      termId: -(i + 1),
+      term: String(q.term ?? "Unknown"),
+      correctAnswer: String(q.correctAnswer ?? ""),
+      choices: Array.isArray(q.choices) ? q.choices.map(String) : [q.correctAnswer],
+    }));
+
+    res.json(formatted);
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message ?? "Quiz generation failed" });
+  }
+});
+
 export default router;

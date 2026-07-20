@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import {
   Plus, CheckCircle2, Circle, Trash2, ChevronDown, ChevronUp,
   Calendar, Clock, Tag, AlertCircle, X, BookOpen, Brain,
-  FileText, ClipboardList, Loader2,
+  FileText, ClipboardList, Loader2, Sparkles,
 } from 'lucide-react';
 import {
   useTasks, useCreateTask, useToggleTask, useDeleteTask, useUpdateTask,
@@ -83,7 +83,38 @@ function TaskForm({ initial, defaultDate, onClose }: TaskFormProps) {
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [error, setError] = useState('');
 
+  // AI Sort state
+  const [aiSorting, setAiSorting] = useState(false);
+  const [aiReasoning, setAiReasoning] = useState('');
+  const [aiApplied, setAiApplied] = useState(false);
+
   const pending = create.isPending || update.isPending;
+
+  async function handleAiSort() {
+    if (!title.trim()) { setError('Enter a task title first so AI can analyse it.'); return; }
+    setAiSorting(true);
+    setAiReasoning('');
+    setAiApplied(false);
+    setError('');
+    try {
+      const r = await fetch('/api/ai/sort-task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: title.trim(), notes: notes.trim() }),
+      });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error ?? 'Sort failed'); }
+      const result = await r.json();
+      if (result.category && CATEGORIES.includes(result.category as any)) setCategory(result.category);
+      if (result.priority && ['high', 'medium', 'low'].includes(result.priority)) setPriority(result.priority as any);
+      if (result.notes && !notes.trim()) setNotes(result.notes);
+      setAiReasoning(result.reasoning ?? '');
+      setAiApplied(true);
+    } catch (e: any) {
+      setError(e.message ?? 'AI sort failed. Try again.');
+    } finally {
+      setAiSorting(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -126,7 +157,7 @@ function TaskForm({ initial, defaultDate, onClose }: TaskFormProps) {
       </div>
 
       <div className="px-5 py-2">
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold">{initial ? 'Edit Task' : 'New Task'}</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
             <X className="w-4 h-4" />
@@ -134,25 +165,63 @@ function TaskForm({ initial, defaultDate, onClose }: TaskFormProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Title */}
+          {/* Title + AI Sort */}
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
               Task Title *
             </label>
-            <input
-              type="text"
-              value={title}
-              onChange={e => { setTitle(e.target.value); setError(''); }}
-              placeholder="e.g. Review Cardiology terms"
-              className="w-full rounded-2xl bg-secondary/50 border border-border px-4 py-3 text-sm font-medium placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={title}
+                onChange={e => { setTitle(e.target.value); setError(''); setAiApplied(false); }}
+                placeholder="e.g. Review Cardiology terms"
+                className="flex-1 rounded-2xl bg-secondary/50 border border-border px-4 py-3 text-sm font-medium placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition min-w-0"
+              />
+              <button
+                type="button"
+                onClick={handleAiSort}
+                disabled={aiSorting || !title.trim()}
+                title="AI Sort — auto-fill category, priority & notes"
+                className={cn(
+                  'shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center border transition-all',
+                  aiApplied
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-primary/8 text-primary border-primary/20 hover:bg-primary/15 disabled:opacity-40'
+                )}
+              >
+                {aiSorting
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <Sparkles className="w-4 h-4" />
+                }
+              </button>
+            </div>
+            {/* AI reasoning badge */}
+            <AnimatePresence>
+              {aiReasoning && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <p className="mt-2 text-[11px] font-medium text-primary bg-primary/8 border border-primary/15 rounded-xl px-3 py-2 leading-relaxed flex items-start gap-1.5">
+                    <Sparkles className="w-3 h-3 shrink-0 mt-0.5" />
+                    {aiReasoning}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Category */}
           <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
-              Category
-            </label>
+            <div className="flex items-center gap-2 mb-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Category
+              </label>
+              {aiApplied && <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-md">AI</span>}
+            </div>
             <div className="flex flex-wrap gap-2">
               {CATEGORIES.map(c => (
                 <button
@@ -174,9 +243,12 @@ function TaskForm({ initial, defaultDate, onClose }: TaskFormProps) {
 
           {/* Priority */}
           <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
-              Priority
-            </label>
+            <div className="flex items-center gap-2 mb-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Priority
+              </label>
+              {aiApplied && <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-md">AI</span>}
+            </div>
             <div className="flex gap-2">
               {(['high', 'medium', 'low'] as const).map(p => (
                 <button
@@ -238,7 +310,7 @@ function TaskForm({ initial, defaultDate, onClose }: TaskFormProps) {
             <textarea
               value={notes}
               onChange={e => setNotes(e.target.value)}
-              placeholder="Optional details…"
+              placeholder="Optional details… (or let AI fill these in)"
               rows={2}
               className="w-full rounded-2xl bg-secondary/50 border border-border px-4 py-3 text-sm font-medium placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition resize-none"
             />
