@@ -34,9 +34,10 @@ Home Dashboard
 ![image alt](https://github.com/aimanfarzeen8-create/Student-Aid/blob/a2bdebfb6e2fdd828c77577f493333524f79920f/replit%201.jpeg)
 
 Planner Interface:
-
+![image alt](https://github.com/aimanfarzeen8-create/Student-Aid/blob/d22faf87a22f356f26c0357ace76d423c6599319/WhatsApp%20Image%202026-07-20%20at%208.21.27%20PM.jpeg)
 
 Focus Time
+
 Dictionary Search
 
 
