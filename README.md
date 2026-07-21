@@ -37,6 +37,7 @@ Planner Interface:
 ![image alt](https://github.com/aimanfarzeen8-create/Student-Aid/blob/d22faf87a22f356f26c0357ace76d423c6599319/WhatsApp%20Image%202026-07-20%20at%208.21.27%20PM.jpeg)
 
 Focus Time
+![image alt](https://github.com/aimanfarzeen8-create/Student-Aid/blob/5ef5a762d2c64c94c12f1d74d4376dc689bf83bd/WhatsApp%20Image%202026-07-20%20at%208.21.27%20PM%20(1).jpeg)
 
 Dictionary Search
 
