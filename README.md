@@ -42,8 +42,12 @@ Focus Time :
 Dictionary Search :
 ![image alt](https://github.com/aimanfarzeen8-create/Student-Aid/blob/dfde2dbcfe2e414986bc169126c8b22e1a58aaa1/WhatsApp%20Image%202026-07-20%20at%208.21.27%20PM%20(2).jpeg)
 
-AI feature :
+Quiz Mode :
+![image alt](https://github.com/aimanfarzeen8-create/Student-Aid/blob/d8d1f2954e9f1d9a50802b3160549c3b7b50b7b8/WhatsApp%20Image%202026-07-20%20at%208.21.27%20PM%20(3).jpeg)
+
+Progress tracker :
 ![image alt](
+
 
 How to Run
    https://github.com/aimanfarzeen8-create/super-duper-engine
