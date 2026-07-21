@@ -49,5 +49,5 @@ AI Med Assistant  :
 ![image alt](https://github.com/aimanfarzeen8-create/Student-Aid/blob/06bff0e10dd8b898d455b4ac67e1ac891d99308b/WhatsApp%20Image%202026-07-21%20at%2010.00.27%20PM.jpeg)
 
 
-How to Run
+How to Run, Repository :
    https://github.com/aimanfarzeen8-create/super-duper-engine
