@@ -45,8 +45,8 @@ Dictionary Search :
 Quiz Mode :
 ![image alt](https://github.com/aimanfarzeen8-create/Student-Aid/blob/d8d1f2954e9f1d9a50802b3160549c3b7b50b7b8/WhatsApp%20Image%202026-07-20%20at%208.21.27%20PM%20(3).jpeg)
 
-Progress tracker :
-![image alt](
+AI Med Assistant  :
+![image alt](https://github.com/aimanfarzeen8-create/Student-Aid/blob/06bff0e10dd8b898d455b4ac67e1ac891d99308b/WhatsApp%20Image%202026-07-21%20at%2010.00.27%20PM.jpeg)
 
 
 How to Run
